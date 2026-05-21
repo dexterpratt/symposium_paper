@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hypothesis Browser — NDExBio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="config.js"></script>
+<script src="ndex-api.js"></script>
+<script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<style>
+  :root {
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --ink: #1f2328;
+    --ink-muted: #57606a;
+    --border: #d0d7de;
+    --border-soft: #e6eaef;
+    --accent: #0969da;
+    --warn: #bf6900;
+    --warn-bg: #fff8e8;
+    --tier-tentative: #c97f00;
+    --tier-supported: #1a7f37;
+    --tier-established: #0550ae;
+    --tier-inferred:   #6f42c1;
+    --tier-contested:  #cf222e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header.app {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 100;
+  }
+  header.app h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header.app .crumbs { color: var(--ink-muted); font-size: 13px; }
+  header.app .spacer { flex: 1; }
+  header.app .server-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: var(--ink-muted);
+  }
+  a.nav { color: var(--accent); text-decoration: none; cursor: pointer; }
+  a.nav:hover { text-decoration: underline; }
+
+  main { padding: 16px 18px; max-width: 1600px; margin: 0 auto; }
+
+  /* Index view ------------------------------------------------------------ */
+  .filters {
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .filters label { font-size: 13px; color: var(--ink-muted); }
+  .filters input, .filters select {
+    font: inherit; padding: 4px 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: white;
+  }
+  .filters input { width: 220px; }
+
+  .card-list { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 1px 4px rgba(9,105,218,0.08);
+  }
+  .card-head { display: flex; align-items: baseline; gap: 10px; }
+  .card-title { font-weight: 600; font-size: 14px; flex: 1; }
+  .card-date { font-size: 12px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .card-desc {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--ink-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--border-soft);
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .chip.agent { background: #e7f1ff; color: #0550ae; }
+  .chip.type-hypothesis { background: #fff0e6; color: #b03a00; }
+  .chip.type-hypothesis-experiment { background: #ede1f9; color: #5e2c91; }
+  .chip.type-analysis { background: #e6f4ea; color: #1a7f37; }
+  .chip.type-other { background: var(--border-soft); }
+  .chip.tier-tentative   { background: #fff3d9; color: var(--tier-tentative); }
+  .chip.tier-supported   { background: #dcfce7; color: var(--tier-supported); }
+  .chip.tier-established { background: #dbe9ff; color: var(--tier-established); }
+  .chip.tier-inferred    { background: #ede1f9; color: var(--tier-inferred); }
+  .chip.tier-contested   { background: #ffe2e2; color: var(--tier-contested); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+
+  /* Detail view ----------------------------------------------------------- */
+  .detail-header {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .detail-header h2 { margin: 0 0 6px 0; font-size: 17px; }
+  .detail-header .sub { color: var(--ink-muted); font-size: 13px; margin-bottom: 8px; }
+  .stack-thread { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
+  .stack-thread .arrow { color: var(--ink-muted); }
+  .stack-thread .stack-link {
+    color: var(--accent); cursor: pointer; text-decoration: none;
+  }
+  .stack-thread .stack-link:hover { text-decoration: underline; }
+  .stack-thread .self { font-weight: 600; }
+
+  .warnings {
+    background: var(--warn-bg);
+    border: 1px solid #f5d589;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--warn);
+  }
+  .warnings .warn-row { display: flex; align-items: center; gap: 10px; }
+  .warnings button.ask {
+    background: white;
+    border: 1px solid #d6a04a;
+    color: var(--warn);
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+  }
+  .warnings button.ask:hover { background: #fff1d4; }
+
+  .layout-split {
+    display: grid;
+    grid-template-columns: minmax(360px, 420px) 1fr;
+    gap: 12px;
+    min-height: 600px;
+  }
+  @media (max-width: 980px) {
+    .layout-split { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .panel-head {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-head .hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  /* Claims list ----------------------------------------------------------- */
+  .claims-body { padding: 10px; overflow-y: auto; max-height: 720px; }
+  .claim {
+    border-left: 4px solid #888;
+    background: #fcfcfb;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border-radius: 0 4px 4px 0;
+    border-top: 1px solid var(--border-soft);
+    border-right: 1px solid var(--border-soft);
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .claim:hover { background: #f6f8fa; }
+  .claim.selected {
+    background: #fff8e8;
+    box-shadow: 0 0 0 2px rgba(191,105,0,0.12);
+  }
+  .claim-subtype { font-size: 11px; color: var(--ink-muted); margin-bottom: 3px; }
+  .claim-text { font-size: 13px; line-height: 1.4; margin-bottom: 6px; }
+  .claim-meta { font-size: 11px; color: var(--ink-muted); display: flex; flex-wrap: wrap; gap: 6px; }
+  .claim-detail {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-soft);
+    font-size: 12px;
+  }
+  .claim-detail dt { font-weight: 600; color: var(--ink-muted); margin-top: 4px; }
+  .claim-detail dd { margin: 2px 0 0 0; }
+  .claim-detail dd a { color: var(--accent); text-decoration: none; }
+  .claim-detail dd a:hover { text-decoration: underline; }
+
+  /* Network canvas -------------------------------------------------------- */
+  #cy {
+    flex: 1; min-height: 600px; background: #fafafa;
+  }
+  .canvas-toolbar {
+    padding: 6px 10px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 12px;
+    color: var(--ink-muted);
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .canvas-toolbar button {
+    font: inherit; font-size: 12px;
+    padding: 3px 8px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .canvas-toolbar button:hover { border-color: var(--accent); }
+
+  /* BEL edges table ------------------------------------------------------- */
+  .edges-section {
+    margin-top: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .edges-section .panel-head { cursor: pointer; user-select: none; }
+  .edges-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .edges-table th, .edges-table td {
+    padding: 5px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+  }
+  .edges-table th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: var(--ink-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .edges-table tr:hover { background: #fafafa; cursor: pointer; }
+  .edges-table .interaction { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  .edges-table .quote { color: var(--ink-muted); font-style: italic; max-width: 480px; }
+
+  /* Status / loading ------------------------------------------------------ */
+  .status {
+    padding: 16px; color: var(--ink-muted); text-align: center;
+    background: var(--panel); border: 1px solid var(--border-soft); border-radius: 6px;
+  }
+  .status.error { color: var(--tier-contested); }
+
+  /* Modal ----------------------------------------------------------------- */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.32);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .modal {
+    background: white;
+    border-radius: 8px;
+    padding: 16px 20px;
+    max-width: 540px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .modal h3 { margin: 0 0 8px 0; font-size: 15px; }
+  .modal pre {
+    background: #f6f8fa;
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .modal .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .modal button {
+    font: inherit; padding: 5px 12px;
+    background: white; border: 1px solid var(--border); border-radius: 4px;
+    cursor: pointer;
+  }
+  .modal button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>Hypothesis Browser</h1>
+  <span class="crumbs" id="crumbs"></span>
+  <span class="spacer"></span>
+  <span class="server-tag" id="server-tag"></span>
+</header>
+
+<main id="root">
+  <div class="status">Loading…</div>
+</main>
+
+<script>
+/* =====================================================================
+ * Hypothesis Browser — single-page artifact
+ *
+ * Scope (v0): browse hypothesis-shaped networks ordered by latest update,
+ * detail view with claims sidebar + Cytoscape mechanism diagram (using
+ * stored CX2 layout) + BEL edge table. Schema-aware: claim nodes are
+ * surfaced separately from BEL mechanism nodes; asserted_in edges are
+ * de-emphasized. Orphan nodes are flagged.
+ *
+ * Data conventions (from rgiskard cGAS-STING-4mechanisms 2026-05-04):
+ *   node_type: protein | protein-pmod | rna | biological-process | claim
+ *   edge interaction:
+ *     directlyIncreases / increases / translatedTo  -> BEL mechanism
+ *     asserted_in                                    -> claim anchor
+ *   network props:
+ *     ndex-message-type, ndex-workflow, evidence_tier_default,
+ *     authority_boundary, parent_hypothesis_uuid,
+ *     parent_hypothesis_experiment_uuid, working_model_uuid,
+ *     supporting_pmids
+ * ===================================================================== */
+
+const HYPOTHESIS_AGENTS = ['rgiskard', 'rvernal'];
+const HYPOTHESIS_MESSAGE_TYPES = new Set([
+  'hypothesis', 'hypothesis-experiment', 'analysis'
+]);
+const HYPOTHESIS_WORKFLOWS = new Set([
+  'hypothesis-dissection',
+  'hypothesis-experiment-design',
+  'bel-mechanism-representations',
+]);
+
+// ─── tiny utilities ───────────────────────────────────────────────────
+
+const root = document.getElementById('root');
+const crumbsEl = document.getElementById('crumbs');
+document.getElementById('server-tag').textContent =
+  (window.SYMPOSIUM_CONFIG?.ndex?.server) || '?';
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k === 'onClick') e.addEventListener('click', v);
+    else if (k.startsWith('data-')) e.setAttribute(k, v);
+    else if (k === 'html') e.innerHTML = v;
+    else e[k] = v;
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+function fmtDate(ms) {
+  if (!ms) return '';
+  const d = new Date(Number(ms));
+  return d.toISOString().slice(0, 10);
+}
+function fmtDateTime(ms) {
+  if (!ms) return '';
+  const d = new Date(Number(ms));
+  return d.toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+}
+
+// Stable hash → hue. So claim border colors are deterministic per node.
+function hueFromString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h) % 360;
+}
+function claimColor(claimId) {
+  const hue = hueFromString(String(claimId));
+  return `hsl(${hue}, 65%, 45%)`;
+}
+
+// ─── routing ──────────────────────────────────────────────────────────
+
+function parseHash() {
+  const h = window.location.hash || '#/';
+  const m = h.match(/^#\/network\/([0-9a-f-]+)/i);
+  if (m) return { view: 'detail', uuid: m[1] };
+  return { view: 'index' };
+}
+window.addEventListener('hashchange', () => render());
+
+function go(path) { window.location.hash = path; }
+
+// ─── network discovery (index view) ───────────────────────────────────
+
+async function loadIndex() {
+  // Pull all networks for hypothesis-authoring agents, then filter.
+  // Simplest cut for v0: union of rgiskard + rvernal networks.
+  const all = [];
+  for (const agent of HYPOTHESIS_AGENTS) {
+    try {
+      const list = await NdexApi.getUserNetworksFull(agent);
+      all.push(...list);
+    } catch (err) {
+      console.warn(`Failed to load ${agent} networks:`, err);
+    }
+  }
+
+  const filtered = all
+    .map(n => {
+      const props = NdexApi.extractProperties(n.properties || []);
+      return { net: n, props };
+    })
+    .filter(({ props }) => {
+      const t = props['ndex-message-type'];
+      const w = props['ndex-workflow'];
+      return HYPOTHESIS_MESSAGE_TYPES.has(t) || HYPOTHESIS_WORKFLOWS.has(w);
+    })
+    .filter(({ props }) => {
+      // exclude self-knowledge networks even if they slip through
+      return props['ndex-message-type'] !== 'self-knowledge';
+    })
+    .sort((a, b) =>
+      Number(b.net.modificationTime || 0) - Number(a.net.modificationTime || 0)
+    );
+
+  return filtered;
+}
+
+function renderIndex(items) {
+  crumbsEl.textContent = '';
+  const filterInput = el('input', {
+    type: 'text',
+    placeholder: 'Filter by title or agent…',
+    oninput: (e) => applyFilter(e.target.value),
+  });
+  const filters = el('div', { class: 'filters' },
+    el('label', {}, 'Hypothesis-shaped networks across the community.'),
+    filterInput,
+    el('span', { style: 'flex:1' }),
+    el('span', { class: 'chip' }, `${items.length} networks`),
+  );
+
+  const list = el('div', { class: 'card-list', id: 'card-list' });
+  for (const it of items) list.appendChild(renderCard(it));
+
+  function applyFilter(q) {
+    const needle = q.trim().toLowerCase();
+    list.innerHTML = '';
+    const matched = !needle ? items : items.filter(({ net, props }) => {
+      return (net.name || '').toLowerCase().includes(needle)
+          || (props['ndex-agent'] || '').toLowerCase().includes(needle);
+    });
+    for (const it of matched) list.appendChild(renderCard(it));
+  }
+
+  root.innerHTML = '';
+  root.appendChild(filters);
+  root.appendChild(list);
+}
+
+function renderCard({ net, props }) {
+  const msgType = props['ndex-message-type'] || 'other';
+  const workflow = props['ndex-workflow'] || '';
+  const tier = props['evidence_tier_default'] || props['hypothesis_tier'];
+  const isAnalysis = msgType === 'analysis';
+  const card = el('div', {
+      class: 'card',
+      onClick: () => go(`#/network/${net.externalId}`),
+    },
+    el('div', { class: 'card-head' },
+      el('div', { class: 'card-title' },
+        cleanTitle(net.name || net.externalId)),
+      el('div', { class: 'card-date' }, fmtDate(net.modificationTime)),
+    ),
+    el('div', { class: 'card-meta' },
+      el('span', { class: 'chip agent' }, props['ndex-agent'] || '?'),
+      msgType ? el('span', { class: `chip type-${msgType}` }, msgType) : null,
+      workflow ? el('span', { class: 'chip' }, workflow) : null,
+      tier ? el('span', { class: `chip tier-${tier}` }, `tier: ${tier}`) : null,
+      props['parent_hypothesis_uuid']
+        ? el('span', { class: 'chip', title: `parent hypothesis ${props['parent_hypothesis_uuid']}` },
+            '↑ parent')
+        : null,
+      isAnalysis && net.nodeCount ? el('span', { class: 'chip' },
+            `${net.nodeCount} nodes / ${net.edgeCount} edges`) : null,
+    ),
+    net.description ? el('div', { class: 'card-desc' }, firstSentences(net.description, 2)) : null,
+  );
+  return card;
+}
+
+function cleanTitle(name) {
+  // strip the noisy "ndexagent <agent>" prefix when present
+  return name.replace(/^ndexagent\s+\S+\s*/, '').trim() || name;
+}
+
+function firstSentences(text, n) {
+  if (!text) return '';
+  const parts = text.split(/(?<=[.!?])\s+/);
+  return parts.slice(0, n).join(' ');
+}
+
+// ─── detail view ──────────────────────────────────────────────────────
+
+let cy = null;  // active Cytoscape instance
+
+async function loadDetail(uuid) {
+  const summary = await NdexApi.getNetworkSummary(uuid);
+  const cx = await NdexApi.downloadNetwork(uuid);
+  const parsed = parseCX2WithPositions(cx);
+  return { uuid, summary, parsed };
+}
+
+/**
+ * Local CX2 parser that preserves node positions.
+ * The shared parseCX in ndex-api.js drops them; we need them for the
+ * stored mechanism layout.
+ *
+ * CX2 nodes can carry positions either:
+ *   (a) inline:  { id, x, y, v: {...} }
+ *   (b) separate: cartesianLayout aspect [{ node, x, y }]
+ * Handle both.
+ */
+function parseCX2WithPositions(cxData) {
+  const nodes = [];
+  const edges = [];
+  const networkAttrs = {};
+  const visualProps = [];
+  const positions = {};
+
+  if (!Array.isArray(cxData)) return { nodes, edges, networkAttrs, visualProps };
+
+  for (const aspect of cxData) {
+    if (aspect.nodes) {
+      for (const n of aspect.nodes) {
+        const node = { id: n.id, v: n.v || {} };
+        if (n.x != null) node.x = n.x;
+        if (n.y != null) node.y = n.y;
+        nodes.push(node);
+      }
+    } else if (aspect.edges) {
+      for (const e of aspect.edges) {
+        edges.push({ id: e.id, s: e.s, t: e.t, v: e.v || {} });
+      }
+    } else if (aspect.networkAttributes) {
+      for (const a of aspect.networkAttributes) {
+        const k = a.name || a.n;
+        const v = a.value ?? a.v;
+        if (k != null) networkAttrs[k] = v;
+      }
+    } else if (aspect.cartesianLayout) {
+      for (const p of aspect.cartesianLayout) {
+        positions[p.node] = { x: p.x, y: p.y };
+      }
+    } else if (aspect.visualProperties) {
+      visualProps.push(...aspect.visualProperties);
+    }
+  }
+
+  // merge separate-aspect positions in if not already inline
+  for (const node of nodes) {
+    if (node.x == null && positions[node.id]) {
+      node.x = positions[node.id].x;
+      node.y = positions[node.id].y;
+    }
+  }
+
+  return { nodes, edges, networkAttrs, visualProps };
+}
+
+function renderDetail({ uuid, summary, parsed }) {
+  const props = NdexApi.extractProperties(summary);
+  crumbsEl.innerHTML = '';
+  crumbsEl.appendChild(el('a', {
+    class: 'nav', onClick: () => go('#/'),
+  }, '← All hypotheses'));
+
+  // Find orphans before rendering — we want a warning at top
+  const incidentNodes = new Set();
+  for (const e of parsed.edges) { incidentNodes.add(e.s); incidentNodes.add(e.t); }
+  const claims = parsed.nodes.filter(n => n.v.node_type === 'claim');
+  const mechNodes = parsed.nodes.filter(n => n.v.node_type !== 'claim');
+  const orphans = parsed.nodes.filter(n => !incidentNodes.has(n.id));
+
+  // Stack thread (parent links) ----------------------------------------
+  const stackLinks = [];
+  if (props['parent_hypothesis_uuid']) {
+    stackLinks.push({ label: 'hypothesis frame', uuid: props['parent_hypothesis_uuid'] });
+  }
+  if (props['parent_hypothesis_experiment_uuid']) {
+    stackLinks.push({ label: 'experiment design', uuid: props['parent_hypothesis_experiment_uuid'] });
+  }
+  if (props['working_model_uuid']) {
+    stackLinks.push({ label: 'working model', uuid: props['working_model_uuid'] });
+  }
+
+  // Header --------------------------------------------------------------
+  const header = el('div', { class: 'detail-header' },
+    el('h2', {}, cleanTitle(summary.name)),
+    el('div', { class: 'sub' },
+      `${props['ndex-agent'] || '?'}`,
+      el('span', { class: 'chip', style: 'margin-left:8px' }, props['ndex-message-type'] || ''),
+      props['ndex-workflow'] ? el('span', { class: 'chip', style: 'margin-left:6px' }, props['ndex-workflow']) : null,
+      props['evidence_tier_default']
+        ? el('span', { class: `chip tier-${props['evidence_tier_default']}`, style: 'margin-left:6px' },
+            `tier: ${props['evidence_tier_default']}`)
+        : null,
+      el('span', { style: 'margin-left:10px' }, ` · ${fmtDateTime(summary.modificationTime)}`),
+    ),
+    summary.description ? el('div', { class: 'sub', style: 'margin-top:6px' }, summary.description) : null,
+    props['authority_boundary'] ? el('div', { class: 'sub', style: 'margin-top:4px; font-style:italic' },
+      `Authority: ${props['authority_boundary']}`) : null,
+    stackLinks.length ? buildStackThread(stackLinks, uuid) : null,
+  );
+
+  // Warnings (orphans etc.) ---------------------------------------------
+  let warnings = null;
+  if (orphans.length) {
+    const orphanNames = orphans.map(n => prettyNodeLabel(n.v.name)).join(', ');
+    warnings = el('div', { class: 'warnings' },
+      el('div', { class: 'warn-row' },
+        el('div', { style: 'flex:1' },
+          `⚠ ${orphans.length} orphan node(s) (no incident edges): ${orphanNames}. ` +
+          `These are referenced in claim text or evidence quotes but not anchored in the graph.`),
+        el('button', {
+          class: 'ask',
+          onClick: () => showAskDialog(props['ndex-agent'], summary, orphans),
+        }, `Ask ${props['ndex-agent'] || 'author'}`),
+      ),
+    );
+  }
+
+  // Claims panel --------------------------------------------------------
+  const claimsBody = el('div', { class: 'claims-body', id: 'claims-body' });
+  const claimItems = claims.map(c => renderClaim(c, parsed));
+  claimItems.forEach(({ el: itemEl }) => claimsBody.appendChild(itemEl));
+  if (claims.length === 0) {
+    claimsBody.appendChild(el('div', { class: 'status' },
+      'No claim nodes in this network. The mechanism diagram is the entire content.'));
+  }
+
+  const claimsPanel = el('div', { class: 'panel' },
+    el('div', { class: 'panel-head' },
+      el('span', {}, `Claims (${claims.length})`),
+      el('span', { class: 'hint' }, 'click to highlight in mechanism'),
+    ),
+    claimsBody,
+  );
+
+  // Network panel -------------------------------------------------------
+  const cyContainer = el('div', { id: 'cy' });
+  const networkPanel = el('div', { class: 'panel' },
+    el('div', { class: 'panel-head' },
+      el('span', {}, `Mechanism (${mechNodes.length} nodes / ${parsed.edges.length} edges)`),
+      el('span', { class: 'hint' }, 'click node → filter claims; scroll to zoom'),
+    ),
+    cyContainer,
+    el('div', { class: 'canvas-toolbar' },
+      el('button', { onClick: () => cy && cy.fit(undefined, 30) }, 'Fit'),
+      el('button', { onClick: () => cy && cy.zoom({ level: 1, renderedPosition: { x: 0, y: 0 } }) }, 'Reset zoom'),
+      el('button', { onClick: () => clearHighlights() }, 'Clear highlights'),
+      el('span', { style: 'flex:1' }),
+      legendChip('protein', '#cfe4f7', 'ellipse'),
+      legendChip('protein-pmod', '#f7e3b1', 'ellipse'),
+      legendChip('rna', '#cfe9d2', 'parallelogram'),
+      legendChip('biological-process', '#f7ebd4', 'rounded-rect'),
+      legendChip('claim', '#fff', 'card'),
+    ),
+  );
+
+  const split = el('div', { class: 'layout-split' }, claimsPanel, networkPanel);
+
+  // BEL edges table -----------------------------------------------------
+  const belEdges = parsed.edges.filter(e => e.v.interaction !== 'asserted_in');
+  const edgesSection = renderEdgesSection(belEdges, parsed.nodes);
+
+  root.innerHTML = '';
+  root.appendChild(header);
+  if (warnings) root.appendChild(warnings);
+  root.appendChild(split);
+  root.appendChild(edgesSection);
+
+  // Now build Cytoscape. This must happen after the container is in the DOM.
+  buildCytoscape(parsed, claimItems);
+}
+
+function buildStackThread(links, currentUuid) {
+  const thread = el('div', { class: 'stack-thread' },
+    el('span', { class: 'chip' }, 'stack:'),
+  );
+  links.forEach((lk, i) => {
+    if (i > 0) thread.appendChild(el('span', { class: 'arrow' }, '·'));
+    thread.appendChild(el('a', {
+      class: 'stack-link',
+      onClick: () => go(`#/network/${lk.uuid}`),
+      title: lk.uuid,
+    }, lk.label));
+  });
+  thread.appendChild(el('span', { class: 'arrow' }, '·'));
+  thread.appendChild(el('span', { class: 'self', title: currentUuid }, 'this network'));
+  return thread;
+}
+
+function legendChip(label, color, shape) {
+  return el('span', {
+    class: 'chip',
+    style: `background: ${color}; color: var(--ink);`,
+    title: shape,
+  }, label);
+}
+
+// Render one claim card. Returns {el, claimNode, color, select, deselect}.
+function renderClaim(claimNode, parsed) {
+  const color = claimColor(claimNode.id);
+  const v = claimNode.v;
+  const pmids = (v.pmid || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  const item = el('div', { class: 'claim' });
+  item.style.borderLeftColor = color;
+
+  item.appendChild(el('div', { class: 'claim-subtype' },
+    v.claim_subtype || 'claim',
+    v.evidence_tier ? el('span', { class: `chip tier-${v.evidence_tier}`, style: 'margin-left:6px' },
+        v.evidence_tier) : null,
+  ));
+  item.appendChild(el('div', { class: 'claim-text' },
+    stripClaimPrefix(v.name)));
+
+  const detail = el('dl', { class: 'claim-detail' });
+  if (v.evidence_quote) {
+    detail.appendChild(el('dt', {}, 'Evidence quote'));
+    detail.appendChild(el('dd', { style: 'font-style:italic' }, `"${v.evidence_quote}"`));
+  }
+  if (pmids.length) {
+    const dd = el('dd', {});
+    pmids.forEach((p, i) => {
+      if (i > 0) dd.appendChild(document.createTextNode(', '));
+      dd.appendChild(el('a', {
+        href: `https://pubmed.ncbi.nlm.nih.gov/${p}/`,
+        target: '_blank',
+      }, `PMID ${p}`));
+    });
+    detail.appendChild(el('dt', {}, 'Sources'));
+    detail.appendChild(dd);
+  }
+  if (v.scope) {
+    detail.appendChild(el('dt', {}, 'Scope'));
+    detail.appendChild(el('dd', {}, v.scope));
+  }
+  if (v.rationale) {
+    detail.appendChild(el('dt', {}, 'Why this matters'));
+    detail.appendChild(el('dd', {}, v.rationale));
+  }
+  if (v.last_validated) {
+    detail.appendChild(el('dt', {}, 'Last validated'));
+    detail.appendChild(el('dd', {}, v.last_validated));
+  }
+  item.appendChild(detail);
+
+  // anchor nodes for highlighting (asserted_in edges where this claim is target)
+  const anchorNodeIds = parsed.edges
+    .filter(e => e.v.interaction === 'asserted_in' && e.t === claimNode.id)
+    .map(e => e.s);
+
+  const ret = {
+    el: item, claimNode, color, anchorNodeIds, selected: false,
+    select() {
+      this.selected = true;
+      this.el.classList.add('selected');
+    },
+    deselect() {
+      this.selected = false;
+      this.el.classList.remove('selected');
+    },
+  };
+  item.addEventListener('click', () => toggleClaimSelection(ret));
+  return ret;
+}
+
+function stripClaimPrefix(name) {
+  return (name || '').replace(/^CLAIM:\s*/i, '');
+}
+
+// ─── Cytoscape rendering ──────────────────────────────────────────────
+
+let claimRefs = []; // currently rendered claim items
+
+function buildCytoscape(parsed, claimItems) {
+  claimRefs = claimItems;
+
+  // Compute fallback layout for nodes missing positions
+  const haveAnyPos = parsed.nodes.some(n => n.x != null);
+  const elements = [];
+
+  for (const n of parsed.nodes) {
+    const data = {
+      id: String(n.id),
+      label: shortLabel(n.v.name),
+      fullLabel: n.v.name,
+      ntype: n.v.node_type || 'other',
+      props: n.v,
+    };
+    if (n.v.node_type === 'claim') {
+      data.claimColor = claimColor(n.id);
+      data.label = wrapText(stripClaimPrefix(n.v.name), 28);
+    }
+    const item = { data };
+    if (n.x != null && n.y != null) {
+      // CX coordinates: y is conventionally flipped relative to screen
+      item.position = { x: n.x, y: -n.y };
+    }
+    elements.push(item);
+  }
+  for (const e of parsed.edges) {
+    elements.push({
+      data: {
+        id: `e${e.id}`,
+        source: String(e.s),
+        target: String(e.t),
+        interaction: e.v.interaction || '',
+        tier: e.v.evidence_tier || 'tentative',
+        props: e.v,
+      },
+    });
+  }
+
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements,
+    layout: haveAnyPos
+      ? { name: 'preset' }
+      : { name: 'cose', animate: false, idealEdgeLength: 100, nodeRepulsion: 6000 },
+    wheelSensitivity: 0.2,
+    style: [
+      // base node
+      { selector: 'node', style: {
+        'label': 'data(label)',
+        'text-wrap': 'wrap',
+        'text-max-width': 140,
+        'font-size': 11,
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'color': '#1f2328',
+        'border-width': 1,
+        'border-color': '#475569',
+      }},
+      { selector: 'node[ntype = "protein"]', style: {
+        'shape': 'ellipse',
+        'background-color': '#cfe4f7',
+        'width': 'label',
+        'height': 'label',
+        'padding': '6px',
+      }},
+      { selector: 'node[ntype = "protein-pmod"]', style: {
+        'shape': 'ellipse',
+        'background-color': '#f7e3b1',
+        'width': 'label',
+        'height': 'label',
+        'padding': '6px',
+        'border-color': '#a17605',
+      }},
+      { selector: 'node[ntype = "rna"]', style: {
+        'shape': 'cut-rectangle',
+        'background-color': '#cfe9d2',
+        'width': 'label',
+        'height': 'label',
+        'padding': '6px',
+      }},
+      { selector: 'node[ntype = "biological-process"]', style: {
+        'shape': 'round-rectangle',
+        'background-color': '#f7ebd4',
+        'width': 'label',
+        'height': 'label',
+        'padding': '8px',
+      }},
+      { selector: 'node[ntype = "claim"]', style: {
+        'shape': 'round-rectangle',
+        'background-color': '#ffffff',
+        'border-color': 'data(claimColor)',
+        'border-width': 3,
+        'width': 'label',
+        'height': 'label',
+        'padding': '8px',
+        'font-size': 10,
+        'text-max-width': 180,
+      }},
+      // orphan glow
+      { selector: 'node.orphan', style: {
+        'border-color': '#cf222e',
+        'border-style': 'dashed',
+        'border-width': 2,
+        'background-color': '#ffe2e2',
+      }},
+      // base edge
+      { selector: 'edge', style: {
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 1,
+        'width': 1.5,
+        'line-color': '#94a3b8',
+        'target-arrow-color': '#94a3b8',
+        'font-size': 9,
+        'color': '#475569',
+      }},
+      // BEL mechanism edges, by tier
+      { selector: 'edge[interaction = "directlyIncreases"], edge[interaction = "increases"], edge[interaction = "translatedTo"]', style: {
+        'line-color': '#475569',
+        'target-arrow-color': '#475569',
+        'width': 2,
+      }},
+      { selector: 'edge[tier = "established"]', style: {
+        'line-color': '#0550ae',
+        'target-arrow-color': '#0550ae',
+        'width': 2.5,
+      }},
+      // claim anchor edges — visually subordinate
+      { selector: 'edge[interaction = "asserted_in"]', style: {
+        'line-style': 'dashed',
+        'line-color': '#cbd5e1',
+        'target-arrow-color': '#cbd5e1',
+        'target-arrow-shape': 'none',
+        'width': 1,
+      }},
+      // highlight states
+      { selector: 'node.dim', style: { 'opacity': 0.25 } },
+      { selector: 'edge.dim', style: { 'opacity': 0.15 } },
+      { selector: 'node.hi', style: {
+        'border-color': '#bf6900',
+        'border-width': 3,
+      }},
+      { selector: 'edge.hi', style: {
+        'line-color': '#bf6900',
+        'target-arrow-color': '#bf6900',
+        'width': 3,
+      }},
+    ],
+  });
+
+  // Mark orphans
+  const incident = new Set();
+  for (const e of parsed.edges) { incident.add(e.s); incident.add(e.t); }
+  for (const n of parsed.nodes) {
+    if (!incident.has(n.id)) cy.$id(String(n.id)).addClass('orphan');
+  }
+
+  // Click on a mechanism node → filter claim list to those that anchor it.
+  cy.on('tap', 'node', (evt) => {
+    const node = evt.target;
+    if (node.data('ntype') === 'claim') {
+      const ref = claimRefs.find(r => String(r.claimNode.id) === node.id());
+      if (ref) toggleClaimSelection(ref);
+      return;
+    }
+    filterClaimsByAnchorNode(Number(node.id()));
+  });
+  cy.on('tap', (evt) => {
+    if (evt.target === cy) clearHighlights();
+  });
+
+  if (haveAnyPos) cy.fit(undefined, 30);
+}
+
+function shortLabel(name) {
+  if (!name) return '';
+  if (name.length <= 28) return name;
+  return name.slice(0, 26) + '…';
+}
+
+function wrapText(text, n) {
+  // crude word wrap — for claim node labels in the canvas
+  const words = (text || '').split(/\s+/);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > n) {
+      if (cur) lines.push(cur);
+      cur = w;
+    } else {
+      cur = (cur + ' ' + w).trim();
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 5).join('\n');
+}
+
+function prettyNodeLabel(name) {
+  return name || '?';
+}
+
+// ─── highlighting ─────────────────────────────────────────────────────
+
+let activeClaim = null;
+
+function toggleClaimSelection(ref) {
+  if (activeClaim === ref) {
+    activeClaim.deselect();
+    activeClaim = null;
+    clearHighlights(false);
+    return;
+  }
+  if (activeClaim) activeClaim.deselect();
+  activeClaim = ref;
+  ref.select();
+  highlightClaimAnchors(ref);
+  // Scroll claim into view in the sidebar
+  ref.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function highlightClaimAnchors(ref) {
+  if (!cy) return;
+  const claimNodeId = String(ref.claimNode.id);
+  const anchorIds = new Set(ref.anchorNodeIds.map(String));
+  cy.batch(() => {
+    cy.elements().addClass('dim').removeClass('hi');
+    const claimEle = cy.$id(claimNodeId);
+    claimEle.removeClass('dim').addClass('hi');
+    for (const aid of anchorIds) cy.$id(aid).removeClass('dim').addClass('hi');
+    // edges connecting claim to its anchors
+    cy.edges().forEach(e => {
+      if (e.data('interaction') === 'asserted_in'
+          && e.data('target') === claimNodeId
+          && anchorIds.has(e.data('source'))) {
+        e.removeClass('dim').addClass('hi');
+      }
+    });
+  });
+}
+
+function filterClaimsByAnchorNode(nodeId) {
+  // Reorder claim cards: those anchoring nodeId on top, others fade.
+  const matching = claimRefs.filter(r => r.anchorNodeIds.includes(nodeId));
+  const nonMatching = claimRefs.filter(r => !r.anchorNodeIds.includes(nodeId));
+  const body = document.getElementById('claims-body');
+  if (!body) return;
+  body.innerHTML = '';
+  for (const r of matching) {
+    r.el.style.opacity = '1';
+    body.appendChild(r.el);
+  }
+  for (const r of nonMatching) {
+    r.el.style.opacity = '0.45';
+    body.appendChild(r.el);
+  }
+  // also dim non-matching claim nodes in the canvas
+  if (cy) {
+    cy.batch(() => {
+      cy.elements().removeClass('hi dim');
+      const target = cy.$id(String(nodeId));
+      target.addClass('hi');
+      cy.elements().difference(target.closedNeighborhood()).addClass('dim');
+    });
+  }
+}
+
+function clearHighlights(resetClaimList = true) {
+  if (cy) cy.batch(() => cy.elements().removeClass('dim hi'));
+  if (activeClaim) { activeClaim.deselect(); activeClaim = null; }
+  if (resetClaimList) {
+    const body = document.getElementById('claims-body');
+    if (body && claimRefs.length) {
+      body.innerHTML = '';
+      for (const r of claimRefs) {
+        r.el.style.opacity = '1';
+        body.appendChild(r.el);
+      }
+    }
+  }
+}
+
+// ─── BEL edges section ────────────────────────────────────────────────
+
+function renderEdgesSection(belEdges, nodes) {
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
+  let collapsed = belEdges.length > 12;
+  const head = el('div', { class: 'panel-head' },
+    el('span', {}, `BEL mechanism edges (${belEdges.length})`),
+    el('span', { class: 'hint', id: 'edges-hint' },
+      collapsed ? 'click to expand' : 'click row → highlight in mechanism'),
+  );
+  const wrap = el('div', { class: 'edges-section' }, head);
+  const tableWrap = el('div', { id: 'edges-table-wrap', style: collapsed ? 'display:none' : '' });
+
+  const tbl = el('table', { class: 'edges-table' });
+  tbl.appendChild(el('thead', {}, el('tr', {},
+    el('th', {}, 'Source'),
+    el('th', {}, 'Interaction'),
+    el('th', {}, 'Target'),
+    el('th', {}, 'PMID'),
+    el('th', {}, 'Tier'),
+    el('th', {}, 'Evidence quote'),
+  )));
+  const tbody = el('tbody', {});
+  for (const e of belEdges) {
+    const src = nodeById.get(e.s)?.v.name || `?${e.s}`;
+    const tgt = nodeById.get(e.t)?.v.name || `?${e.t}`;
+    const pmid = e.v.pmid || '';
+    const tr = el('tr', { onClick: () => highlightEdgeInCanvas(e.id) },
+      el('td', {}, prettyNodeLabel(src)),
+      el('td', { class: 'interaction' }, e.v.interaction || ''),
+      el('td', {}, prettyNodeLabel(tgt)),
+      el('td', {}, pmid ? buildPmidLinks(pmid) : ''),
+      el('td', {}, e.v.evidence_tier
+        ? el('span', { class: `chip tier-${e.v.evidence_tier}` }, e.v.evidence_tier)
+        : ''),
+      el('td', { class: 'quote' }, e.v.evidence_quote ? `"${e.v.evidence_quote}"` : ''),
+    );
+    tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody);
+  tableWrap.appendChild(tbl);
+  wrap.appendChild(tableWrap);
+
+  if (collapsed) {
+    head.addEventListener('click', () => {
+      collapsed = !collapsed;
+      tableWrap.style.display = collapsed ? 'none' : '';
+      document.getElementById('edges-hint').textContent =
+        collapsed ? 'click to expand' : 'click row → highlight in mechanism';
+    });
+  }
+  return wrap;
+}
+
+function buildPmidLinks(pmidStr) {
+  const pmids = String(pmidStr).split(',').map(s => s.trim()).filter(Boolean);
+  const span = el('span', {});
+  pmids.forEach((p, i) => {
+    if (i > 0) span.appendChild(document.createTextNode(', '));
+    span.appendChild(el('a', {
+      href: `https://pubmed.ncbi.nlm.nih.gov/${p}/`,
+      target: '_blank',
+    }, p));
+  });
+  return span;
+}
+
+function highlightEdgeInCanvas(edgeId) {
+  if (!cy) return;
+  cy.batch(() => {
+    cy.elements().addClass('dim').removeClass('hi');
+    const e = cy.$id(`e${edgeId}`);
+    e.removeClass('dim').addClass('hi');
+    e.source().removeClass('dim').addClass('hi');
+    e.target().removeClass('dim').addClass('hi');
+  });
+}
+
+// ─── Ask-author dialog (stub) ─────────────────────────────────────────
+
+function showAskDialog(agent, summary, orphans) {
+  const orphanLines = orphans.map(o =>
+    `  - ${o.v.name} (id ${o.id}, type ${o.v.node_type})`
+  ).join('\n');
+  const text =
+`To: ${agent || '<author>'}
+Re: ${summary.name}
+Network: ${summary.externalId}
+
+I noticed the following node(s) are present in this network but have
+no incident edges — they are orphaned in the graph structure even
+though they may be referenced in claim text or evidence quotes:
+
+${orphanLines}
+
+Could you clarify their intended role and either anchor them to the
+mechanism or add a claim that explains the implicit reference?
+`;
+
+  const bg = el('div', { class: 'modal-bg', onClick: (ev) => {
+    if (ev.target === bg) document.body.removeChild(bg);
+  }});
+  const m = el('div', { class: 'modal' },
+    el('h3', {}, `Ask ${agent || 'author'} (preview)`),
+    el('div', { class: 'sub', style: 'margin-bottom:8px; color: var(--ink-muted)' },
+      'v0 stub — this preview shows what the message would contain. ' +
+      'Sending requires the publish-message workflow, which is not wired up yet.'),
+    el('pre', {}, text),
+    el('div', { class: 'modal-actions' },
+      el('button', {
+        onClick: () => navigator.clipboard.writeText(text)
+          .then(() => { /* noop */ }),
+      }, 'Copy text'),
+      el('button', { class: 'primary', onClick: () => document.body.removeChild(bg) }, 'Close'),
+    ),
+  );
+  bg.appendChild(m);
+  document.body.appendChild(bg);
+}
+
+// ─── top-level render ─────────────────────────────────────────────────
+
+async function render() {
+  const route = parseHash();
+  if (route.view === 'detail') {
+    root.innerHTML = '<div class="status">Loading network…</div>';
+    try {
+      const data = await loadDetail(route.uuid);
+      renderDetail(data);
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `<div class="status error">
+        Failed to load network ${route.uuid}: ${escapeHtml(err.message)}
+      </div>`;
+    }
+  } else {
+    root.innerHTML = '<div class="status">Loading hypothesis index…</div>';
+    try {
+      const items = await loadIndex();
+      renderIndex(items);
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `<div class="status error">
+        Failed to load index: ${escapeHtml(err.message)}<br>
+        <small>Server: ${escapeHtml(window.SYMPOSIUM_CONFIG?.ndex?.server || '?')}</small>
+      </div>`;
+    }
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+render();
+</script>
+</body>
+</html>
