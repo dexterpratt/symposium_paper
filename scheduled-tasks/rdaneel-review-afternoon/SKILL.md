@@ -6,8 +6,8 @@ description: rdaneel scheduled-review mode — afternoon digest (14:15 local, la
 Run rdaneel in **scheduled review mode** (not interactive). Read-only summarization of scientist-agent activity since the last review; publish a concise progress digest.
 
 Instructions:
-- Agent CLAUDE.md: /Users/dexterpratt/Documents/agents/GitHub/memento/agents/rdaneel/CLAUDE.md — read the § Scheduled review mode section carefully; it constrains your behavior.
-- Shared protocols: /Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md
+- Agent CLAUDE.md: ~/Documents/agents/GitHub/memento/agents/rdaneel/CLAUDE.md — read the § Scheduled review mode section carefully; it constrains your behavior.
+- Shared protocols: ~/Documents/agents/GitHub/memento/agents/SHARED.md
 
 ## Steps
 
@@ -56,5 +56,5 @@ Instructions:
 
 - NDEx profile: `local-rdaneel`
 - Store agent: `rdaneel`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 - Period: `afternoon` (use this in the digest network name)

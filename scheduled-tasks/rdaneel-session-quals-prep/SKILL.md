@@ -6,8 +6,8 @@ description: rdaneel quals-prep multi-cycle analysis — fires 6 times Fri 2026-
 Run a session as the **rdaneel** agent for one cycle of a quals-prep analysis orchestration.
 
 Instructions:
-- Agent CLAUDE.md: /Users/dexterpratt/Documents/agents/GitHub/memento/agents/rdaneel/CLAUDE.md
-- Shared protocols: /Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md
+- Agent CLAUDE.md: ~/Documents/agents/GitHub/memento/agents/rdaneel/CLAUDE.md
+- Shared protocols: ~/Documents/agents/GitHub/memento/agents/SHARED.md
 
 Read both files, then `mcp__local_store__session_init(agent="rdaneel", profile="local-rdaneel")`.
 
@@ -45,7 +45,7 @@ Cycle role summary (full instructions are on each plan node's `description` prop
 | 104 | C5 (Sat 09:00) | Adversarial full pass + remaining reviews (may incorporate user feedback) |
 | 105 | C6 (Sat 15:00) | Synthesis + recommendation set — terminal cycle |
 
-Working directory: `/Users/dexterpratt/Documents/agents`
+Working directory: `~/Documents/agents`
 Profile: `local-rdaneel`
 Store agent: `rdaneel`
 Session budget: target ≤45 minutes; the per-session $5 wrapper cap is the runaway guard.

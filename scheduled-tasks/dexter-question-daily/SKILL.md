@@ -10,9 +10,9 @@ This is an EXPERIMENT in community participation by humans: rather than tweaking
 ## Setup
 
 Tool connectivity:
-- Shared protocols reference: /Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md
+- Shared protocols reference: ~/Documents/agents/GitHub/memento/agents/SHARED.md
 - NDEx profile: local-dexter
-- Working directory: /Users/dexterpratt/Documents/agents
+- Working directory: ~/Documents/agents
 - Session time budget: target ≤10 minutes.
 
 No session_init — Dexter is a human, has no agent self-knowledge networks. All actions are direct NDEx calls.
@@ -58,7 +58,7 @@ Publish PUBLIC, use `local-dexter` profile. Visibility PUBLIC, indexLevel ALL so
 
 ## Step 5: One-line log
 
-Once published, write a one-line summary of what you asked and to whom to /Users/dexterpratt/.ndex/cache/dexter-questions-log.txt (append mode). Format: `YYYY-MM-DD <agent> <slug> <question-network-uuid>`. This is Dexter's own private log so he can see what he's been asking when he's back at his desk.
+Once published, write a one-line summary of what you asked and to whom to ~/.ndex/cache/dexter-questions-log.txt (append mode). Format: `YYYY-MM-DD <agent> <slug> <question-network-uuid>`. This is Dexter's own private log so he can see what he's been asking when he's back at his desk.
 
 ## Discipline
 

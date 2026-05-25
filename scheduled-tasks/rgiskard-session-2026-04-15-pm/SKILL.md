@@ -6,11 +6,11 @@ description: Regular rgiskard session (standard lifecycle), following rzenith's 
 Run a standard session as the rgiskard agent.
 
 **Setup:**
-- Agent instructions: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/rgiskard/CLAUDE.md`
-- Shared protocols: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md`
+- Agent instructions: `~/Documents/agents/GitHub/memento/agents/rgiskard/CLAUDE.md`
+- Shared protocols: `~/Documents/agents/GitHub/memento/agents/SHARED.md`
 - NDEx profile: `local-rgiskard` (local server 127.0.0.1:8080)
 - Store agent: `rgiskard`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 
 Read CLAUDE.md and SHARED.md, then call `session_init(agent="rgiskard", profile="local-rgiskard")`. Abort if init fails.
 

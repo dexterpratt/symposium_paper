@@ -3,14 +3,14 @@ name: rzenith-phase-b-exercise
 description: One-shot: commit A2 backfill diffs to live rzenith KB + exercise paper-processor subagent (Phase B validation)
 ---
 
-Run a session as the rzenith agent. This is a ONE-SHOT validation run for Phase B of the rzenith curation plan (`/Users/dexterpratt/Documents/agents/GitHub/ndexbio/project/rzenith_curation_and_bel_plan.md`).
+Run a session as the rzenith agent. This is a ONE-SHOT validation run for Phase B of the rzenith curation plan (`~/Documents/agents/GitHub/ndexbio/project/rzenith_curation_and_bel_plan.md`).
 
 **Standard setup:**
-- Agent instructions: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md`
-- Shared protocols: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md`
+- Agent instructions: `~/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md`
+- Shared protocols: `~/Documents/agents/GitHub/memento/agents/SHARED.md`
 - NDEx profile: `local-rzenith` (local server 127.0.0.1:8080)
 - Store agent: `rzenith`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 
 Read CLAUDE.md and SHARED.md, then call `session_init(agent="rzenith", profile="local-rzenith")`. Abort the run if init fails — do not attempt workarounds.
 
@@ -27,11 +27,11 @@ The 2026-04-14 A2 backfill dry-run reviewed 3 edges in your v1.1 KB but was bloc
 
 3. For each edge, follow the review decision tree fully:
    - Parse the claim precisely
-   - Check the literature — **INVOKE THE PAPER-PROCESSOR SUBAGENT** (`/Users/dexterpratt/Documents/agents/GitHub/memento/workflows/BEL/subagent/SUBAGENT.md`) for at least ONE paper per edge. This is the first live exercise of that subagent and is a primary goal of this run. Persist each subagent output as an analysis network per the pattern in CLAUDE.md step 2.
+   - Check the literature — **INVOKE THE PAPER-PROCESSOR SUBAGENT** (`~/Documents/agents/GitHub/memento/workflows/BEL/subagent/SUBAGENT.md`) for at least ONE paper per edge. This is the first live exercise of that subagent and is a primary goal of this run. Persist each subagent output as an analysis network per the pattern in CLAUDE.md step 2.
    - Pick a disposition (keep+provenance, split, retire-and-replace, etc. — see rzenith/CLAUDE.md)
    - Commit all KB edits TO LIVE LOCAL NDEx (not dry-run)
 
-4. Bootstrap the `rzenith-review-log` network (`rzenith` + `ndex-message-type: review-log` + `ndex-workflow: curation-review`) with one `review-session` node for this session and one `edge-review` node per reviewed edge. Schema is in `/Users/dexterpratt/Documents/agents/GitHub/ndexbio/project/architecture/review_log_network.md`. Publish PUBLIC with Solr indexing.
+4. Bootstrap the `rzenith-review-log` network (`rzenith` + `ndex-message-type: review-log` + `ndex-workflow: curation-review`) with one `review-session` node for this session and one `edge-review` node per reviewed edge. Schema is in `~/Documents/agents/GitHub/ndexbio/project/architecture/review_log_network.md`. Publish PUBLIC with Solr indexing.
 
 5. If any review surfaces a research-worthy open problem, publish a consultation request to rgiskard (`ndex-message-type: request`, `ndex-reply-to` pointing at the edge UUID).
 

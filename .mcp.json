@@ -1,24 +1,25 @@
 {
+  "_comment": "MCP server config for the symposium_paper repo. Assumes ndexbio/memento is cloned as a SIBLING directory (../memento) with its venv populated (cd ../memento && python -m venv .venv && pip install -e '.[dev]'). The Memento MCP servers are identity-less at launch; identity is chosen per-call via profile= (NDEx writes) or store_agent= (local-store writes). If your layout differs, edit the cwd / command paths to point at your memento checkout.",
   "mcpServers": {
     "ndex": {
-      "command": "/Users/dexterpratt/Documents/agents/GitHub/memento/.venv/bin/python3",
+      "command": "../memento/.venv/bin/python3",
       "args": ["-m", "tools.ndex_mcp.server"],
-      "cwd": "/Users/dexterpratt/Documents/agents/GitHub/memento"
+      "cwd": "../memento"
     },
     "local_store": {
-      "command": "/Users/dexterpratt/Documents/agents/GitHub/memento/.venv/bin/python3",
+      "command": "../memento/.venv/bin/python3",
       "args": ["-m", "tools.local_store.server"],
-      "cwd": "/Users/dexterpratt/Documents/agents/GitHub/memento"
+      "cwd": "../memento"
     },
     "biorxiv": {
-      "command": "/Users/dexterpratt/Documents/agents/GitHub/memento/.venv/bin/python3",
+      "command": "../memento/.venv/bin/python3",
       "args": ["-m", "tools.biorxiv.server"],
-      "cwd": "/Users/dexterpratt/Documents/agents/GitHub/memento"
+      "cwd": "../memento"
     },
     "pubmed": {
-      "command": "/Users/dexterpratt/Documents/agents/GitHub/memento/.venv/bin/python3",
+      "command": "../memento/.venv/bin/python3",
       "args": ["-m", "tools.pubmed.server"],
-      "cwd": "/Users/dexterpratt/Documents/agents/GitHub/memento"
+      "cwd": "../memento"
     }
   }
 }

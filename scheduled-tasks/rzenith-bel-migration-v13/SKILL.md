@@ -6,12 +6,12 @@ description: One-shot: migrate the 6 provenanced legacy-syntax edges in rzenith 
 Run a session as the rzenith agent. This is a ONE-SHOT migration task: convert the 6 provenanced legacy-syntax edges currently in the DDR knowledge base (v1.2) to proper BEL syntax, producing KB v1.3. This is cleanup from the 2026-04-15 Phase B exercise run which added provenance but did NOT migrate syntax.
 
 **Standard setup:**
-- Agent instructions: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md` (recently updated with the "Author in BEL — and migrate on touch" rule in §Curation Review Protocol step 4 — read it carefully)
-- Shared protocols: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md`
-- BEL skill: `/Users/dexterpratt/Documents/agents/GitHub/memento/workflows/BEL/SKILL.md` and `reference/` files
+- Agent instructions: `~/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md` (recently updated with the "Author in BEL — and migrate on touch" rule in §Curation Review Protocol step 4 — read it carefully)
+- Shared protocols: `~/Documents/agents/GitHub/memento/agents/SHARED.md`
+- BEL skill: `~/Documents/agents/GitHub/memento/workflows/BEL/SKILL.md` and `reference/` files
 - NDEx profile: `local-rzenith` (127.0.0.1:8080)
 - Store agent: `rzenith`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 
 Read CLAUDE.md and SHARED.md, then call `session_init(agent="rzenith", profile="local-rzenith")`. Abort if init fails.
 

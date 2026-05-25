@@ -5,7 +5,7 @@ Written 2026-04-15. Captures the design decisions and work sequence for bringing
 Cross-references:
 - `ndexbio/paper/draft_3.md` §"DepMap/GDSC Analysis Expert" — the paper's framing of R. Corona's role
 - `ndexbio/project/rzenith_curation_and_bel_plan.md` — reference Phase A/B pattern for agent onboarding and validation
-- Collaborator repo (debugged, ~4K LOC): `/Users/dexterpratt/Documents/agents/GitHub/sl_agent_project_dev/src/sl_hypothesis/mcp_tools/`
+- Collaborator repo (debugged, ~4K LOC): `~/Documents/agents/GitHub/sl_agent_project_dev/src/sl_hypothesis/mcp_tools/`
 - `memento/agents/SHARED.md` — shared protocols (recently extended with self-knowledge naming rules)
 - `memento/agents/rgiskard/CLAUDE.md`, `memento/agents/rzenith/CLAUDE.md` — existing agent-definition templates to model from
 

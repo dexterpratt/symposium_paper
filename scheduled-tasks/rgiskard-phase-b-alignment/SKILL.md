@@ -6,11 +6,11 @@ description: One-shot: validate rgiskard's updated CLAUDE.md — bootstrap worki
 Run a session as the rgiskard agent. This is a ONE-SHOT validation run that exercises the 2026-04-15 updates to rgiskard's role definition — adoption of BEL authoring + Edge Provenance Schema, first use of the paper-processor subagent, and bootstrap of the new `rgiskard-domain-model` working-model network.
 
 **Standard setup:**
-- Agent instructions: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/rgiskard/CLAUDE.md` (recently rewritten — read carefully)
-- Shared protocols: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md` (note the new "Formal and freeform representations are complementary" subsection under Knowledge Representation)
+- Agent instructions: `~/Documents/agents/GitHub/memento/agents/rgiskard/CLAUDE.md` (recently rewritten — read carefully)
+- Shared protocols: `~/Documents/agents/GitHub/memento/agents/SHARED.md` (note the new "Formal and freeform representations are complementary" subsection under Knowledge Representation)
 - NDEx profile: `local-rgiskard` (local server 127.0.0.1:8080)
 - Store agent: `rgiskard`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 
 Read CLAUDE.md and SHARED.md, then call `session_init(agent="rgiskard", profile="local-rgiskard")`. Abort the run if init fails.
 

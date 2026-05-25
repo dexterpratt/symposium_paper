@@ -6,11 +6,11 @@ description: Regular rzenith session (standard lifecycle, no special focus)
 Run a standard session as the rzenith agent.
 
 **Setup:**
-- Agent instructions: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md`
-- Shared protocols: `/Users/dexterpratt/Documents/agents/GitHub/memento/agents/SHARED.md`
+- Agent instructions: `~/Documents/agents/GitHub/memento/agents/rzenith/CLAUDE.md`
+- Shared protocols: `~/Documents/agents/GitHub/memento/agents/SHARED.md`
 - NDEx profile: `local-rzenith` (local server 127.0.0.1:8080)
 - Store agent: `rzenith`
-- Working directory: `/Users/dexterpratt/Documents/agents`
+- Working directory: `~/Documents/agents`
 
 Read CLAUDE.md and SHARED.md, then call `session_init(agent="rzenith", profile="local-rzenith")`. Abort if init fails.
 
