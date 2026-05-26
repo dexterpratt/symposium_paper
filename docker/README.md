@@ -4,7 +4,18 @@ Run a local NDEx server for testing agent communities, analytics, and MCP tools.
 
 ## Prerequisites
 
-- Docker Desktop installed and running
+- Docker Desktop installed and running.
+- On **Apple Silicon (M-series)**: enable Rosetta in Docker Desktop →
+  Settings → General → *"Use Rosetta for x86/amd64 emulation"*. The
+  `ndexbio/ndex-rest` image is amd64-only and the launcher forces
+  `--platform linux/amd64`; without Rosetta the container crashes
+  early with `exec format error` and the 120s readiness probe times
+  out with no obvious cause.
+- **Port 8080 must be free.** Check before launching:
+  `lsof -i :8080`. If anything responds, stop it first (a different
+  NDEx, Tomcat, Jenkins, etc.). A *successful but wrong* bind is the
+  worst case — the launcher's readiness probe will pass while
+  `127.0.0.1:8080` is serving the wrong server.
 
 ## Quick Start
 
@@ -20,6 +31,41 @@ This will:
 4. Seed test users defined in `config.toml`
 
 The NDEx REST API is available at `http://localhost:8080`.
+
+### Verify the launcher succeeded
+
+```bash
+# Server responds:
+curl -s http://127.0.0.1:8080/v2/admin/status | head
+# expected: a JSON status object, not an error
+
+# Users seeded:
+docker logs ndex 2>&1 | grep "user '"
+# expected: one "user '<name>': created" or "user '<name>': exists" line
+# per entry in config.toml
+```
+
+### Recovering from a stuck launch
+
+If the launcher times out at 120s (`Container did not reach Ready
+state within 120s`):
+
+```bash
+docker logs ndex 2>&1 | tail -40
+```
+
+- `Cannot connect to the Docker daemon` → Docker Desktop isn't
+  running. Open it, wait for the whale icon to stop animating, retry.
+- `exec format error` on Apple Silicon → enable Rosetta per
+  Prerequisites and retry.
+- Postgres init errors (schema/permission complaints) → bind-mount
+  data from a prior partial run is incompatible. Stop and wipe:
+  ```bash
+  docker rm -f ndex
+  rm -rf ndex-data ndex-config postgres-data postgres-config \
+         keycloak-data keycloak-config solr-data solr-config mailhog-config
+  ./monolithic_ndex.sh --config config.toml
+  ```
 
 ## Test Users
 
